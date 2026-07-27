@@ -1,0 +1,11 @@
+.bsp/
+.idea/
+.metals/
+.scala-build/
+.vscode/
+target/
+**/target/
+project/project/
+project/target/
+node_modules/
+.DS_Store
