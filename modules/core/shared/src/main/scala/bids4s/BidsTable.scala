@@ -60,6 +60,9 @@ final case class BidsTable private (columns: Vector[String], rows: Vector[Vector
         rows.map(row => indexes.map(row))
       )
 
+  def select(first: String, rest: String*): Either[BidsError, BidsTable] =
+    select(first +: rest.toVector)
+
 object BidsTable:
   private val MissingTokens = Set("", "n/a", "NA", "N/A")
 

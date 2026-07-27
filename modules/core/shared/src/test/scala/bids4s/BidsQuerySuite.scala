@@ -42,6 +42,55 @@ class BidsQuerySuite extends munit.FunSuite:
 
     assertEquals(hits.map(_.value), Vector("sub-01/func/sub-01_task-taskA_run-01_bold.nii.gz"))
 
+  test("exact constructs the common single-entity query without weakening validation"):
+    val concise = value(BidsQuery.exact(EntityKey.Subject, "01", scope = BidsScope.Raw))
+    val expanded =
+      query(
+        filters = Vector(filter(EntityKey.Subject, "01")),
+        matchMode = MatchMode.Exact,
+        scope = BidsScope.Raw
+      )
+
+    assertEquals(concise, expanded)
+    assertEquals(
+      manifest.paths(concise).map(_.value),
+      Vector(
+        "sub-01/anat/sub-01_T1w.nii.gz",
+        "sub-01/func/sub-01_task-taskA_run-01_bold.nii.gz",
+        "sub-01/func/sub-01_task-taskA_run-01_events.tsv"
+      )
+    )
+    assert(BidsQuery.exact(EntityKey.Subject, " ").isLeft)
+
+  test("exact accepts several checked entity filters"):
+    val concise =
+      value(
+        BidsQuery.exact(
+          Vector(EntityKey.Subject -> "01", EntityKey.Task -> "taskA"),
+          scope = BidsScope.Raw
+        )
+      )
+    val expanded =
+      query(
+        filters = Vector(
+          filter(EntityKey.Subject, "01"),
+          filter(EntityKey.Task, "taskA")
+        ),
+        matchMode = MatchMode.Exact,
+        scope = BidsScope.Raw
+      )
+
+    assertEquals(concise, expanded)
+    assertEquals(
+      manifest.paths(concise).map(_.value),
+      Vector(
+        "sub-01/func/sub-01_task-taskA_run-01_bold.nii.gz",
+        "sub-01/func/sub-01_task-taskA_run-01_events.tsv"
+      )
+    )
+    assert(BidsQuery.exact(Vector.empty).isLeft)
+    assert(BidsQuery.exact(Vector(EntityKey.Subject -> " ")).isLeft)
+
   test("query supports regex entity matching"):
     val hits = manifest.paths(
       query(

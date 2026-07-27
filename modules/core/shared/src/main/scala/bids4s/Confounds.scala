@@ -130,6 +130,26 @@ object ConfoundStrategy:
   ): Either[BidsError, ConfoundStrategy] =
     validate(new ConfoundStrategy(name, pcaVars, rawVars, pcaRetention))
 
+  def withComponents(
+      name: String,
+      pcaVars: Vector[String],
+      components: Int,
+      rawVars: Vector[String] = Vector.empty
+  ): Either[BidsError, ConfoundStrategy] =
+    PcaRetention
+      .components(components)
+      .flatMap(retention => fromRetention(name, pcaVars, rawVars, Some(retention)))
+
+  def withVariance(
+      name: String,
+      pcaVars: Vector[String],
+      percent: Double,
+      rawVars: Vector[String] = Vector.empty
+  ): Either[BidsError, ConfoundStrategy] =
+    PcaRetention
+      .percent(percent)
+      .flatMap(retention => fromRetention(name, pcaVars, rawVars, Some(retention)))
+
   def named(name: String): Either[BidsError, ConfoundStrategy] =
     name.trim.toLowerCase match
       case "pcabasic80" => validate(PcaBasic80)
@@ -234,6 +254,9 @@ object ConfoundSets:
 
   val legacyDefault: Vector[String] =
     ConfoundAliases.canonical
+
+  def named(name: String, maxComponents: Int): Either[BidsError, Vector[String]] =
+    named(name, n = Some(maxComponents))
 
   def named(name: String, n: Option[Int] = None): Either[BidsError, Vector[String]] =
     n match

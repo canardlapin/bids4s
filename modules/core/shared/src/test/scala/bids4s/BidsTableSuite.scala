@@ -69,6 +69,15 @@ class BidsTableSuite extends munit.FunSuite:
     assertEquals(value(duration.numeric), Vector(Some(1.0), None))
     assert(table.columnNamed("missing").isLeft)
 
+  test("column selection has a direct common-case form"):
+    val table = value(BidsEvents.readTable("onset duration trial_type\n0 1 go\n2 n/a stop\n"))
+
+    assertEquals(
+      value(table.select("onset", "trial_type")),
+      value(table.select(Vector("onset", "trial_type")))
+    )
+    assert(table.select("missing").isLeft)
+
   test("typed events table requires numeric onset and duration"):
     val events = value(BidsEvents.readEventsTable("onset duration trial_type\n0 1 go\n2 NA stop\n"))
 

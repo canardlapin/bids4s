@@ -111,15 +111,15 @@ final case class BidsProject(
       .toMap
 
   def funcScans(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       kind: String = "bold"
   ): Vector[BidsFile] =
     query(
       BidsQuery.unsafe(
-        filename = Vector(s"${kind}\\.nii(\\.gz)?$$"),
+        filename = Vector("\\.nii(\\.gz)?$"),
         scope = BidsScope.Raw,
         filters = Vector(
           EntityFilter.unsafe(EntityKey.Subject, subid),
@@ -127,17 +127,17 @@ final case class BidsProject(
           EntityFilter.unsafe(EntityKey.Run, run),
           EntityFilter.unsafe(EntityKey.Session, session)
         ),
-        matchMode = MatchMode.Regex,
+        matchMode = MatchMode.Glob,
         strict = true
       )
-    )
+    ).filter(file => file.parsed.exists(name => globMatches(name.kind, kind)))
 
   def preprocScans(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
-      space: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
+      space: String = "*",
       desc: String = "preproc",
       kind: String = "bold",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
@@ -154,23 +154,23 @@ final case class BidsProject(
           EntityFilter.unsafe(EntityKey.Session, session),
           EntityFilter.unsafe(EntityKey.Space, space)
         ),
-        matchMode = MatchMode.Regex,
+        matchMode = MatchMode.Glob,
         strict = true
       )
     ).filter(file => isPreprocessedScan(file, kind = kind, desc = desc))
 
   def anatScans(
-      subid: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      session: String = "*",
       kind: String = "T1w",
-      space: String = ".*",
-      desc: String = ".*",
+      space: String = "*",
+      desc: String = "*",
       scope: BidsScope = BidsScope.Raw,
       pipeline: Option[PipelineName] = None
   ): Vector[BidsFile] =
     query(
       BidsQuery.unsafe(
-        filename = Vector(s"${kind}\\.nii(\\.gz)?$$"),
+        filename = Vector("\\.nii(\\.gz)?$"),
         scope = scope,
         pipeline = pipeline,
         filters = Vector(
@@ -179,16 +179,16 @@ final case class BidsProject(
           EntityFilter.unsafe(EntityKey.Space, space),
           EntityFilter.unsafe(EntityKey.Description, desc)
         ),
-        matchMode = MatchMode.Regex,
+        matchMode = MatchMode.Glob,
         strict = true
       )
-    )
+    ).filter(file => file.parsed.exists(name => globMatches(name.kind, kind)))
 
   def eventFiles(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*"
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*"
   ): Vector[BidsFile] =
     query(
       BidsQuery.unsafe(
@@ -200,16 +200,16 @@ final case class BidsProject(
           EntityFilter.unsafe(EntityKey.Run, run),
           EntityFilter.unsafe(EntityKey.Session, session)
         ),
-        matchMode = MatchMode.Regex,
+        matchMode = MatchMode.Glob,
         strict = true
       )
     )
 
   def confoundFiles(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Vector[BidsFile] =
     query(
@@ -223,7 +223,7 @@ final case class BidsProject(
           EntityFilter.unsafe(EntityKey.Run, run),
           EntityFilter.unsafe(EntityKey.Session, session)
         ),
-        matchMode = MatchMode.Regex,
+        matchMode = MatchMode.Glob,
         strict = true
       )
     ).filter(isConfoundFile)
@@ -238,21 +238,21 @@ final case class BidsProject(
     metadataRecords(this.query(query), inherit)
 
   def funcScanMetadata(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       kind: String = "bold",
       inherit: Boolean = true
   ): Either[BidsError, Vector[BidsMetadataRecord]] =
     metadataRecords(funcScans(subid = subid, task = task, run = run, session = session, kind = kind), inherit)
 
   def preprocScanMetadata(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
-      space: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
+      space: String = "*",
       desc: String = "preproc",
       kind: String = "bold",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep")),
@@ -276,10 +276,10 @@ final case class BidsProject(
     metadataRecords(files, inherit).map(_.flatMap(_.repetitionTime))
 
   def repetitionTimes(
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       scope: BidsScope = BidsScope.Raw,
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Vector[BidsRepetitionTime]] =
@@ -297,8 +297,8 @@ final case class BidsProject(
   def inferRepetitionTime(
       subid: String,
       task: String,
-      run: String = ".*",
-      session: String = ".*",
+      run: String = "*",
+      session: String = "*",
       scope: BidsScope = BidsScope.Raw,
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Option[Double]] =
@@ -363,9 +363,9 @@ final case class BidsProject(
 
   private def isPreprocessedScan(file: BidsFile, kind: String, desc: String): Boolean =
     file.parsed.exists { name =>
-      val kindMatches = regexFind(name.kind, kind)
-      val descMatches = name.entities.get(EntityKey.Description).exists(regexFind(_, desc))
-      val preprocKindMatches = regexFind(name.kind, desc)
+      val kindMatches = globMatches(name.kind, kind)
+      val descMatches = name.entities.get(EntityKey.Description).exists(globMatches(_, desc))
+      val preprocKindMatches = globMatches(name.kind, desc)
       (kindMatches && descMatches) || preprocKindMatches
     }
 
@@ -375,5 +375,5 @@ final case class BidsProject(
       .distinct
       .sorted
 
-  private def regexFind(value: String, pattern: String): Boolean =
-    pattern.r.findFirstIn(value).isDefined
+  private def globMatches(value: String, pattern: String): Boolean =
+    value.matches(Matching.globToRegex(pattern))

@@ -100,6 +100,41 @@ final class BidsQuery private (
 object BidsQuery:
   val All: BidsQuery = unsafe()
 
+  def exact(
+      key: EntityKey,
+      value: String,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): Either[BidsError, BidsQuery] =
+    exact(Vector(key -> value), scope, pipeline)
+
+  def exact(filters: Vector[(EntityKey, String)]): Either[BidsError, BidsQuery] =
+    exact(filters, BidsScope.All, None)
+
+  def exact(
+      filters: Vector[(EntityKey, String)],
+      scope: BidsScope
+  ): Either[BidsError, BidsQuery] =
+    exact(filters, scope, None)
+
+  def exact(
+      filters: Vector[(EntityKey, String)],
+      scope: BidsScope,
+      pipeline: Option[PipelineName]
+  ): Either[BidsError, BidsQuery] =
+    if filters.isEmpty then Left(BidsError.InvalidQuery("exact query requires at least one entity filter"))
+    else
+      BidsEither
+        .traverse(filters) { case (key, value) => EntityFilter.from(key, value) }
+        .flatMap { checkedFilters =>
+          from(
+            filters = checkedFilters,
+            matchMode = MatchMode.Exact,
+            scope = scope,
+            pipeline = pipeline
+          )
+        }
+
   def from(
       filename: Vector[String] = Vector(".*"),
       filters: Vector[EntityFilter] = Vector.empty,
@@ -256,7 +291,8 @@ private[bids4s] object Matching:
         filter.values.exists(pattern => value.matches(globToRegex(pattern)))
 
   def isWildcard(filter: EntityFilter, mode: MatchMode): Boolean =
-    mode == MatchMode.Regex && filter.values.length == 1 && filter.values.head == ".*"
+    (mode == MatchMode.Regex && filter.values == Vector(".*")) ||
+      (mode == MatchMode.Glob && filter.values == Vector("*"))
 
   def globToRegex(glob: String): String =
     val out = new StringBuilder("^")

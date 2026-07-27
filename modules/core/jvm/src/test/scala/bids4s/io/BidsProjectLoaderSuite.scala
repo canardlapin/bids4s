@@ -245,14 +245,25 @@ class BidsProjectLoaderSuite extends munit.FunSuite:
 
       val motion6 =
         value(
-          BidsProjectLoader.readConfounds(
+          BidsProjectLoader.readConfoundSet(
             project,
-            cvars = ConfoundSets.named("motion6"),
+            name = "motion6",
             subid = "01",
             task = "rest",
             run = "01"
           )
         )
+      val expandedMotion6 =
+        value(
+          BidsProjectLoader.readConfounds(
+            project,
+            variables = ConfoundSets.motion6,
+            subid = "01",
+            task = "rest",
+            run = "01"
+          )
+        )
+      assertEquals(motion6, expandedMotion6)
       assertEquals(
         motion6.map(_.path.value),
         Vector("derivatives/fmriprep/sub-01/func/sub-01_task-rest_run-01_desc-confounds_timeseries.tsv")
@@ -264,9 +275,9 @@ class BidsProjectLoaderSuite extends munit.FunSuite:
 
       val fd =
         value(
-          BidsProjectLoader.readConfounds(
+          BidsProjectLoader.readConfoundSet(
             project,
-            cvars = ConfoundSets.named("fd"),
+            name = "fd",
             naAction = NaAction.Zero,
             subid = "01",
             task = "rest",
@@ -295,7 +306,7 @@ class BidsProjectLoaderSuite extends munit.FunSuite:
           BidsProjectLoader
             .readConfoundStrategy(
               project,
-              ConfoundStrategy.named("pcabasic80"),
+              ConfoundStrategy.PcaBasic80,
               subid = "01",
               task = "rest",
               run = "01"

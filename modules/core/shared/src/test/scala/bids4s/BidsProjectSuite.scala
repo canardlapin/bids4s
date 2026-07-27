@@ -97,6 +97,28 @@ class BidsProjectSuite extends munit.FunSuite:
       Vector("derivatives/fmriprep/sub-01/ses-A/anat/sub-01_ses-A_space-MNI152NLin2009cAsym_desc-preproc_T1w.nii.gz")
     )
 
+  test("scan selector globs keep plain values exact and accept all input safely"):
+    val selectionProject =
+      project.copy(
+        manifest = BidsManifest.fromRelativePaths(
+          Vector(
+            "sub-01/func/sub-01_task-rest_bold.nii.gz",
+            "sub-01/func/sub-01_task-resting_bold.nii.gz"
+          )
+        )
+      )
+
+    assertEquals(
+      selectionProject.funcScans(task = "rest").map(_.fileName),
+      Vector("sub-01_task-rest_bold.nii.gz")
+    )
+    assertEquals(
+      selectionProject.funcScans(task = "rest*").map(_.fileName),
+      Vector("sub-01_task-rest_bold.nii.gz", "sub-01_task-resting_bold.nii.gz")
+    )
+    assertEquals(selectionProject.funcScans(task = "["), Vector.empty)
+    assertEquals(selectionProject.funcScans(kind = "["), Vector.empty)
+
   test("metadata records attach scan identity and inherited metadata"):
     val records = value(project.funcScanMetadata(subid = "01", task = "rest", run = "01", session = "A"))
 

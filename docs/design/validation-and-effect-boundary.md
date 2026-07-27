@@ -69,6 +69,28 @@ Sequential parsing must not be rewritten as applicative validation merely to
 use Cats. Conversely, independent dataset defects must not be hidden behind a
 single arbitrary first error.
 
+## Caller Ergonomics
+
+Public convenience methods must route into the same typed domain operations as
+their more configurable counterparts. They may hide construction steps that the
+library can perform itself, but they must not hide a consequential policy or
+discard a failure.
+
+This has three practical consequences:
+
+- exact entity queries validate raw values inside `BidsQuery.exact`; callers do
+  not construct and transport `EntityFilter` values for the common case;
+- scan-selector convenience methods use total glob matching, where plain values
+  match exactly and `*` or `?` make pattern matching explicit; caller-supplied
+  regular expressions remain behind the checked `BidsQuery.from` boundary;
+- loaders accept confound-variable lists and validated strategies as values.
+  Named set lookup is composed inside `readConfoundSet`, rather than exposed as
+  an `Either` parameter that every caller must transport.
+
+Convenience methods need equivalence tests against their canonical expansion.
+An ergonomic facade is not permission to introduce a second query, validation,
+or confound-selection semantics.
+
 ## Diagnostic Contract
 
 The shared diagnostic vocabulary will use domain types, not public Cats data
@@ -135,6 +157,8 @@ unknown file as invalid BIDS.
 | `BidsProjectLoader.load` | Add checked synchronous loading, then an opt-in effectful loader | Keep the current return type and valid-project behavior |
 | `BidsQuery(...)` with raw strings | Move callers to total typed factories; prevent unchecked execution | Migrate repository callers before narrowing the constructor |
 | `EntityFilter` with `Vector[String]` | Introduce validated/non-empty typed predicates where semantically required | Preserve single-value convenience construction |
+| Scan selectors with unchecked regex strings | Use total glob selectors for common calls; keep regexes behind checked queries | Plain values become exact; explicit `*` and `?` retain pattern matching |
+| Confound readers with `Either` parameters | Accept validated values and compose named lookup internally | Keep typed failures in the result channel, not the parameter list |
 | `ConfoundStrategy(npcs, percentVariance)` | Make `Option[PcaRetention]` the core state | Retain a validating compatibility factory for old arguments |
 | Generic event table loaders | Add a path-aware validated events-file result | Keep explicitly named generic TSV access separate |
 | Single `BidsError` results | Derive deterministic primary errors from complete reports where compatibility requires one | Do not expose `ValidatedNec` in compatibility APIs |

@@ -281,10 +281,10 @@ object BidsProjectLoader:
 
   def readConfoundTables(
       project: BidsProject,
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Vector[(BidsPath, BidsTable)]] =
     readConfoundTableFiles(project, subid = subid, task = task, run = run, session = session, pipeline = pipeline)
@@ -292,47 +292,69 @@ object BidsProjectLoader:
 
   def readConfounds(
       project: BidsProject,
-      cvars: Either[BidsError, Vector[String]] = Right(ConfoundSets.legacyDefault),
+      variables: Vector[String] = ConfoundSets.legacyDefault,
       naAction: NaAction = NaAction.Leave,
       clean: Vector[ConfoundClean] = Vector(ConfoundClean.ZeroVariance),
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Vector[BidsConfoundSelectionFile]] =
-    cvars.flatMap { variables =>
-      selectConfoundTableFiles(project, subid = subid, task = task, run = run, session = session, pipeline = pipeline) { table =>
-        ConfoundSelector.select(
-          table,
-          ConfoundSelectionConfig(variables = variables, naAction = naAction, clean = clean)
-        )
-      }
+    selectConfoundTableFiles(project, subid = subid, task = task, run = run, session = session, pipeline = pipeline) { table =>
+      ConfoundSelector.select(
+        table,
+        ConfoundSelectionConfig(variables = variables, naAction = naAction, clean = clean)
+      )
+    }
+
+  def readConfoundSet(
+      project: BidsProject,
+      name: String,
+      maxComponents: Option[Int] = None,
+      naAction: NaAction = NaAction.Leave,
+      clean: Vector[ConfoundClean] = Vector(ConfoundClean.ZeroVariance),
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
+      pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
+  ): Either[BidsError, Vector[BidsConfoundSelectionFile]] =
+    ConfoundSets.named(name, maxComponents).flatMap { variables =>
+      readConfounds(
+        project,
+        variables = variables,
+        naAction = naAction,
+        clean = clean,
+        subid = subid,
+        task = task,
+        run = run,
+        session = session,
+        pipeline = pipeline
+      )
     }
 
   def readConfoundStrategy(
       project: BidsProject,
-      strategy: Either[BidsError, ConfoundStrategy],
+      strategy: ConfoundStrategy,
       naAction: NaAction = NaAction.Leave,
       clean: Vector[ConfoundClean] = Vector(ConfoundClean.ZeroVariance),
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Vector[BidsConfoundSelectionFile]] =
-    strategy.flatMap { resolved =>
-      selectConfoundTableFiles(project, subid = subid, task = task, run = run, session = session, pipeline = pipeline) { table =>
-        ConfoundSelector.selectStrategy(table, resolved, naAction = naAction, clean = clean)
-      }
+    selectConfoundTableFiles(project, subid = subid, task = task, run = run, session = session, pipeline = pipeline) { table =>
+      ConfoundSelector.selectStrategy(table, strategy, naAction = naAction, clean = clean)
     }
 
   def readConfoundTableFiles(
       project: BidsProject,
-      subid: String = ".*",
-      task: String = ".*",
-      run: String = ".*",
-      session: String = ".*",
+      subid: String = "*",
+      task: String = "*",
+      run: String = "*",
+      session: String = "*",
       pipeline: Option[PipelineName] = Some(PipelineName("fmriprep"))
   ): Either[BidsError, Vector[BidsTableFile]] =
     BidsEither.traverse(project.confoundFiles(subid = subid, task = task, run = run, session = session, pipeline = pipeline)) { file =>

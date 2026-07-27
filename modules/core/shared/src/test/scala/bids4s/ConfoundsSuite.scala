@@ -17,9 +17,9 @@ class ConfoundsSuite extends munit.FunSuite:
     assertEquals(value(ConfoundSets.named("36p")).length, 36)
 
   test("CompCor confound sets support component caps"):
-    assertEquals(value(ConfoundSets.named("acompcor", n = Some(6))), Vector("a_comp_cor_*[6]"))
-    assertEquals(value(ConfoundSets.named("compcor", n = Some(3))), Vector("a_comp_cor_*[3]", "t_comp_cor_*[3]"))
-    assert(ConfoundSets.named("acompcor", n = Some(0)).isLeft)
+    assertEquals(value(ConfoundSets.named("acompcor", maxComponents = 6)), Vector("a_comp_cor_*[6]"))
+    assertEquals(value(ConfoundSets.named("compcor", maxComponents = 3)), Vector("a_comp_cor_*[3]", "t_comp_cor_*[3]"))
+    assert(ConfoundSets.named("acompcor", maxComponents = 0).isLeft)
 
   test("DVARS and legacy default preserve bidser names"):
     assertEquals(value(ConfoundSets.named("dvars")), Vector("std_dvars"))
@@ -47,7 +47,11 @@ class ConfoundsSuite extends munit.FunSuite:
     val percent = value(PcaRetention.percent(80.0))
     val byComponents = value(ConfoundStrategy.fromRetention("components", Vector("csf"), pcaRetention = Some(components)))
     val byPercent = value(ConfoundStrategy.fromRetention("percent", Vector("csf"), pcaRetention = Some(percent)))
+    val conciseComponents = value(ConfoundStrategy.withComponents("components", Vector("csf"), components = 2))
+    val concisePercent = value(ConfoundStrategy.withVariance("percent", Vector("csf"), percent = 80.0))
 
+    assertEquals(conciseComponents, byComponents)
+    assertEquals(concisePercent, byPercent)
     assertEquals(byComponents.pcaRetention, Some(components))
     assertEquals(byComponents.npcs, Some(2))
     assertEquals(byComponents.percentVariance, None)
@@ -56,6 +60,8 @@ class ConfoundsSuite extends munit.FunSuite:
     assertEquals(byPercent.percentVariance, Some(80.0))
     assert(PcaRetention.components(0).isLeft)
     assert(PcaRetention.percent(101.0).isLeft)
+    assert(ConfoundStrategy.withComponents("bad", Vector("csf"), components = 0).isLeft)
+    assert(ConfoundStrategy.withVariance("bad", Vector("csf"), percent = 101.0).isLeft)
 
   test("confound resolver supports aliases, wildcards, caps, and derivative suffix aliases"):
     val columns =
