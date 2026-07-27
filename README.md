@@ -31,6 +31,9 @@ project.anatScans(subid = "01")
 project.eventFiles(subid = "01", task = "rest")
 ```
 
+`BidsScope.Raw` selects source files, `Derivatives` selects processed outputs,
+and `All` selects both.
+
 The selector strings in these convenience methods are glob patterns. Plain
 values match exactly, `*` matches any text, and `?` matches one character. Use
 `BidsQuery.from` when a query needs regular expressions or mixed policies.
