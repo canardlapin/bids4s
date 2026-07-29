@@ -88,5 +88,5 @@ class BidsNameSuite extends munit.FunSuite:
     assert(BidsKind.from("events", Vector.empty).isLeft)
     assert(BidsPath.from(" ").isLeft)
     assert(PipelineName.from(" ").isLeft)
-    intercept[IllegalArgumentException](BidsPath(" "))
-    intercept[IllegalArgumentException](PipelineName(" "))
+    val _ = intercept[IllegalArgumentException](BidsPath(" "))
+    val _ = intercept[IllegalArgumentException](PipelineName(" "))

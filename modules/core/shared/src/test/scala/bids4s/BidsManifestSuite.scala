@@ -1,6 +1,9 @@
 package bids4s
 
 class BidsManifestSuite extends munit.FunSuite:
+  private def value[A](result: Either[BidsError, A]): A =
+    result.fold(error => fail(error.message), identity)
+
   test("checked manifest construction preserves valid legacy output"):
     val paths =
       Vector(
@@ -115,4 +118,95 @@ class BidsManifestSuite extends munit.FunSuite:
         (Some(path), BidsIssueCode.InvalidEntity, Some("dir")),
         (Some(path), BidsIssueCode.MissingRequiredField, Some("task"))
       )
+    )
+
+  test("exact entity indexing preserves canonical query semantics"):
+    val derivative =
+      DerivativeRoot(BidsPath("derivatives/fmriprep"), PipelineName("fmriprep"))
+    val manifest =
+      BidsManifest.fromRelativePaths(
+        Vector(
+          "sub-01/anat/sub-01_T1w.nii.gz",
+          "sub-01/func/sub-01_task-rest_run-01_bold.nii.gz",
+          "sub-02/func/sub-02_task-rest_run-02_bold.nii.gz",
+          "derivatives/fmriprep/sub-01/func/sub-01_task-rest_space-MNI_desc-preproc_bold.nii.gz"
+        ),
+        Vector(derivative)
+      )
+    val queries =
+      Vector(
+        value(BidsQuery.exact(EntityKey.Subject, "01")),
+        value(
+          BidsQuery.exact(
+            Vector(EntityKey.Subject -> "01", EntityKey.Task -> "rest"),
+            BidsScope.Raw
+          )
+        ),
+        value(
+          BidsQuery.exact(
+            Vector(EntityKey.Subject -> "01"),
+            BidsScope.Derivatives,
+            Some(PipelineName("fmriprep"))
+          )
+        ),
+        value(
+          BidsQuery.from(
+            filters = Vector(value(EntityFilter.from(EntityKey.Task, "rest"))),
+            matchMode = MatchMode.Exact,
+            strict = false
+          )
+        ),
+        BidsQuery.present(EntityKey.Run),
+        BidsQuery.absent(EntityKey.Run),
+        value(
+          BidsQuery.from(
+            filters = Vector(
+              value(EntityFilter.from(EntityKey.Subject, "01")),
+              EntityFilter.present(EntityKey.Task),
+              EntityFilter.absent(EntityKey.Space)
+            ),
+            matchMode = MatchMode.Exact
+          )
+        ),
+        value(
+          BidsQuery.from(
+            filters = Vector(EntityFilter.optional(EntityKey.Acquisition)),
+            matchMode = MatchMode.Exact
+          )
+        )
+      )
+
+    queries.foreach { query =>
+      val canonical = manifest.files.filter(_.matches(query)).sortBy(_.path.value)
+      assertEquals(manifest.query(query), canonical)
+    }
+
+  test("entity value index respects raw, derivative, and pipeline scope"):
+    val derivative =
+      DerivativeRoot(BidsPath("derivatives/fmriprep"), PipelineName("fmriprep"))
+    val manifest =
+      BidsManifest.fromRelativePaths(
+        Vector(
+          "sub-01/func/sub-01_task-rest_bold.nii.gz",
+          "sub-02/func/sub-02_task-nback_bold.nii.gz",
+          "derivatives/fmriprep/sub-03/func/sub-03_task-rest_space-MNI_desc-preproc_bold.nii.gz"
+        ),
+        Vector(derivative)
+      )
+
+    assertEquals(
+      manifest.entityValues(EntityKey.Subject),
+      Vector("01", "02", "03")
+    )
+    assertEquals(
+      manifest.entityValues(EntityKey.Subject, scope = BidsScope.Raw),
+      Vector("01", "02")
+    )
+    assertEquals(
+      manifest.entityValues(
+        EntityKey.Subject,
+        scope = BidsScope.Derivatives,
+        pipeline = Some(PipelineName("fmriprep"))
+      ),
+      Vector("03")
     )

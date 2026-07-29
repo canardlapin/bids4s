@@ -8,3 +8,9 @@ object FirstContact:
 
   val query =
     BidsQuery.exact(EntityKey.Subject, "01", scope = BidsScope.Raw)
+
+  val filesWithRuns =
+    BidsQuery.present(EntityKey.Run)
+
+  val firstRun =
+    BidsQuery.run(1)

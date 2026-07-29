@@ -91,6 +91,39 @@ class BidsQuerySuite extends munit.FunSuite:
     assert(BidsQuery.exact(Vector.empty).isLeft)
     assert(BidsQuery.exact(Vector(EntityKey.Subject -> " ")).isLeft)
 
+  test("exact run matching follows PyBIDS padded integer semantics"):
+    val padded =
+      BidsManifest.fromRelativePaths(
+        Vector(
+          "sub-01/func/sub-01_task-rest_run-01_bold.nii.gz",
+          "sub-01/func/sub-01_task-rest_echo-01_bold.nii.gz"
+        )
+      )
+
+    Vector("1", "01", "001").foreach { run =>
+      assertEquals(
+        padded.paths(value(BidsQuery.exact(EntityKey.Run, run))).map(_.value),
+        Vector("sub-01/func/sub-01_task-rest_run-01_bold.nii.gz")
+      )
+    }
+    assertEquals(
+      padded.paths(value(BidsQuery.run(1))).map(_.value),
+      Vector("sub-01/func/sub-01_task-rest_run-01_bold.nii.gz")
+    )
+    assert(BidsQuery.run(-1).isLeft)
+    assertEquals(
+      padded.paths(value(BidsQuery.exact(EntityKey.Subject, "1"))),
+      Vector.empty
+    )
+    assertEquals(
+      padded.paths(value(BidsQuery.exact(EntityKey.Echo, "1"))),
+      Vector.empty
+    )
+    assertEquals(
+      padded.paths(value(BidsQuery.exact(EntityKey.Echo, "01"))).map(_.value),
+      Vector("sub-01/func/sub-01_task-rest_echo-01_bold.nii.gz")
+    )
+
   test("query supports regex entity matching"):
     val hits = manifest.paths(
       query(
@@ -123,6 +156,56 @@ class BidsQuerySuite extends munit.FunSuite:
 
     assertEquals(lax.map(_.value), Vector("sub-01/anat/sub-01_T1w.nii.gz"))
     assertEquals(strict, Vector.empty)
+
+  test("presence queries express present, absent, and optional entities directly"):
+    assertEquals(
+      manifest.paths(BidsQuery.present(EntityKey.Run)).map(_.value),
+      Vector(
+        "sub-01/func/sub-01_task-taskA_run-01_bold.nii.gz",
+        "sub-01/func/sub-01_task-taskA_run-01_events.tsv"
+      )
+    )
+    assertEquals(
+      manifest.paths(BidsQuery.absent(EntityKey.Run)).map(_.value),
+      Vector(
+        "derivatives/fmriprep/sub-01/func/sub-01_task-taskA_space-MNI_desc-preproc_bold.nii.gz",
+        "participants.tsv",
+        "sub-01/anat/sub-01_T1w.nii.gz"
+      )
+    )
+
+    val optionalAcquisition =
+      query(
+        filters = Vector(EntityFilter.optional(EntityKey.Acquisition)),
+        matchMode = MatchMode.Exact
+      )
+    assertEquals(manifest.paths(optionalAcquisition), manifest.paths())
+
+  test("presence filters compose with value filters without sentinel strings"):
+    val present = EntityFilter.present(EntityKey.Run)
+    val absent = EntityFilter.absent(EntityKey.Acquisition)
+    val hits =
+      manifest.paths(
+        query(
+          filters = Vector(
+            filter(EntityKey.Subject, "01"),
+            present,
+            absent
+          ),
+          matchMode = MatchMode.Exact
+        )
+      )
+
+    assertEquals(present.presence, Some(EntityPresence.Present))
+    assertEquals(present.values, Vector.empty)
+    assertEquals(absent.presence, Some(EntityPresence.Absent))
+    assertEquals(
+      hits.map(_.value),
+      Vector(
+        "sub-01/func/sub-01_task-taskA_run-01_bold.nii.gz",
+        "sub-01/func/sub-01_task-taskA_run-01_events.tsv"
+      )
+    )
 
   test("query separates raw and derivative scopes and pipelines"):
     val hits = manifest.paths(

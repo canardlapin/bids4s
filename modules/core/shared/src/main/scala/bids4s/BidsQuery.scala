@@ -13,6 +13,11 @@ enum MatchMode:
   case Exact
   case Glob
 
+enum EntityPresence:
+  case Present
+  case Absent
+  case Optional
+
 enum QueryPattern:
   case Regex(pattern: String)
   case Exact(value: String)
@@ -39,19 +44,40 @@ object QueryPattern:
     if clean.isEmpty then Left(BidsError.InvalidQuery(s"$label must be non-empty"))
     else Right(clean)
 
-final class EntityFilter private (val key: EntityKey, val values: Vector[String]):
-  def nonEmpty: Boolean = values.nonEmpty
+private[bids4s] enum EntitySelection:
+  case Values(values: Vector[String])
+  case Presence(value: EntityPresence)
+
+final class EntityFilter private (
+    val key: EntityKey,
+    private[bids4s] val selection: EntitySelection
+):
+  def values: Vector[String] =
+    selection match
+      case EntitySelection.Values(values) => values
+      case EntitySelection.Presence(_)    => Vector.empty
+
+  def presence: Option[EntityPresence] =
+    selection match
+      case EntitySelection.Values(_)         => None
+      case EntitySelection.Presence(presence) => Some(presence)
+
+  def nonEmpty: Boolean = true
 
   override def equals(other: Any): Boolean =
     other match
-      case that: EntityFilter => key == that.key && values == that.values
+      case that: EntityFilter => key == that.key && selection == that.selection
       case _                  => false
 
   override def hashCode(): Int =
-    (key, values).##
+    (key, selection).##
 
   override def toString: String =
-    s"EntityFilter($key,$values)"
+    selection match
+      case EntitySelection.Values(values) =>
+        s"EntityFilter($key,$values)"
+      case EntitySelection.Presence(presence) =>
+        s"EntityFilter($key,$presence)"
 
 object EntityFilter:
   def from(key: EntityKey, value: String): Either[BidsError, EntityFilter] =
@@ -60,7 +86,16 @@ object EntityFilter:
   def from(key: EntityKey, values: Vector[String]): Either[BidsError, EntityFilter] =
     if values.isEmpty then Left(BidsError.InvalidQuery("EntityFilter requires at least one value"))
     else if values.exists(_.trim.isEmpty) then Left(BidsError.InvalidQuery("EntityFilter values must be non-empty"))
-    else Right(new EntityFilter(key, values.map(_.trim)))
+    else Right(new EntityFilter(key, EntitySelection.Values(values.map(_.trim))))
+
+  def present(key: EntityKey): EntityFilter =
+    new EntityFilter(key, EntitySelection.Presence(EntityPresence.Present))
+
+  def absent(key: EntityKey): EntityFilter =
+    new EntityFilter(key, EntitySelection.Presence(EntityPresence.Absent))
+
+  def optional(key: EntityKey): EntityFilter =
+    new EntityFilter(key, EntitySelection.Presence(EntityPresence.Optional))
 
   private[bids4s] def unsafe(key: EntityKey, value: String): EntityFilter =
     unsafe(key, Vector(value))
@@ -68,7 +103,7 @@ object EntityFilter:
   private[bids4s] def unsafe(key: EntityKey, values: Vector[String]): EntityFilter =
     require(values.nonEmpty, "EntityFilter requires at least one value")
     require(values.forall(_.trim.nonEmpty), "EntityFilter values must be non-empty")
-    new EntityFilter(key, values.map(_.trim))
+    new EntityFilter(key, EntitySelection.Values(values.map(_.trim)))
 
 final class BidsQuery private (
     val filename: Vector[String],
@@ -99,6 +134,36 @@ final class BidsQuery private (
 
 object BidsQuery:
   val All: BidsQuery = unsafe()
+
+  def present(
+      key: EntityKey,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): BidsQuery =
+    unsafe(
+      filters = Vector(EntityFilter.present(key)),
+      scope = scope,
+      pipeline = pipeline
+    )
+
+  def absent(
+      key: EntityKey,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): BidsQuery =
+    unsafe(
+      filters = Vector(EntityFilter.absent(key)),
+      scope = scope,
+      pipeline = pipeline
+    )
+
+  def run(
+      index: Int,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): Either[BidsError, BidsQuery] =
+    if index < 0 then Left(BidsError.InvalidQuery("run index must be nonnegative"))
+    else exact(EntityKey.Run, index.toString, scope, pipeline)
 
   def exact(
       key: EntityKey,
@@ -273,7 +338,7 @@ private[bids4s] object Matching:
     if clean.isEmpty then Left(BidsError.InvalidQuery("regex pattern must be non-empty"))
     else
       try
-        clean.r
+        val _ = clean.r
         Right(clean)
       catch
         case NonFatal(ex) => Left(BidsError.InvalidQuery(s"invalid regex '$pattern': ${ex.getMessage}"))
@@ -286,9 +351,17 @@ private[bids4s] object Matching:
       case MatchMode.Regex =>
         filter.values.exists(regexFind(value, _))
       case MatchMode.Exact =>
-        filter.values.contains(value)
+        val canonicalValue = canonicalExactValue(filter.key, value)
+        filter.values.exists(expected => canonicalExactValue(filter.key, expected) == canonicalValue)
       case MatchMode.Glob =>
         filter.values.exists(pattern => value.matches(globToRegex(pattern)))
+
+  def canonicalExactValue(key: EntityKey, value: String): String =
+    if key == EntityKey.Run && value.nonEmpty && value.forall(char => char >= '0' && char <= '9')
+    then
+      val unpadded = value.dropWhile(_ == '0')
+      if unpadded.isEmpty then "0" else unpadded
+    else value
 
   def isWildcard(filter: EntityFilter, mode: MatchMode): Boolean =
     (mode == MatchMode.Regex && filter.values == Vector(".*")) ||

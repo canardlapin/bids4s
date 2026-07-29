@@ -34,20 +34,111 @@ final case class BidsFile(
       scopeMatches &&
       pipelineMatches &&
       query.filters.forall { filter =>
-        entities.get(filter.key) match
-          case Some(value) => Matching.entityMatches(value, filter, query.matchMode)
-          case None =>
-            if query.requireEntity then false
-            else if Matching.isWildcard(filter, query.matchMode) then true
-            else !query.strict
+        filter.selection match
+          case EntitySelection.Presence(EntityPresence.Present) =>
+            entities.get(filter.key).isDefined
+          case EntitySelection.Presence(EntityPresence.Absent) =>
+            entities.get(filter.key).isEmpty
+          case EntitySelection.Presence(EntityPresence.Optional) =>
+            true
+          case EntitySelection.Values(_) =>
+            entities.get(filter.key) match
+              case Some(value) => Matching.entityMatches(value, filter, query.matchMode)
+              case None =>
+                if query.requireEntity then false
+                else if Matching.isWildcard(filter, query.matchMode) then true
+                else !query.strict
       }
 
 final case class BidsManifest(files: Vector[BidsFile]):
+  private lazy val filesByExactEntity: Map[(EntityKey, String), Vector[BidsFile]] =
+    files
+      .flatMap { file =>
+        file.entities.keys.map { key =>
+          (key -> file.entities(key)) -> file
+        }
+      }
+      .groupMap(_._1)(_._2)
+
+  private lazy val filesByEntity: Map[EntityKey, Vector[BidsFile]] =
+    files
+      .flatMap { file =>
+        file.entities.keys.map(_ -> file)
+      }
+      .groupMap(_._1)(_._2)
+
+  private lazy val filesByCanonicalRun: Map[String, Vector[BidsFile]] =
+    files
+      .flatMap { file =>
+        file.entities
+          .get(EntityKey.Run)
+          .map(value => Matching.canonicalExactValue(EntityKey.Run, value) -> file)
+      }
+      .groupMap(_._1)(_._2)
+
   def query(query: BidsQuery = BidsQuery.All): Vector[BidsFile] =
-    files.filter(_.matches(query)).sortBy(_.path.value)
+    exactCandidates(query)
+      .getOrElse(files)
+      .filter(_.matches(query))
+      .sortBy(_.path.value)
 
   def paths(query: BidsQuery = BidsQuery.All): Vector[BidsPath] =
     this.query(query).map(_.path)
+
+  def entityValues(
+      key: EntityKey,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): Vector[String] =
+    filesByExactEntity.iterator
+      .collect {
+        case ((indexedKey, value), matchingFiles)
+            if indexedKey == key && matchingFiles.exists(file => inScope(file, scope, pipeline)) =>
+          value
+      }
+      .toVector
+      .sorted
+
+  private def exactCandidates(query: BidsQuery): Option[Vector[BidsFile]] =
+    query.filters
+      .flatMap { filter =>
+        filter.selection match
+          case EntitySelection.Presence(EntityPresence.Present) =>
+            Some(filesByEntity.getOrElse(filter.key, Vector.empty))
+          case EntitySelection.Values(_)
+              if query.matchMode == MatchMode.Exact &&
+                (query.strict || query.requireEntity) =>
+            Some(
+              filter.values
+                .flatMap { value =>
+                  if filter.key == EntityKey.Run then
+                    filesByCanonicalRun.getOrElse(
+                      Matching.canonicalExactValue(EntityKey.Run, value),
+                      Vector.empty
+                    )
+                  else
+                    filesByExactEntity.getOrElse(filter.key -> value, Vector.empty)
+                }
+                .distinct
+            )
+          case _ =>
+            None
+      }
+      .minByOption(_.length)
+
+  private def inScope(
+      file: BidsFile,
+      scope: BidsScope,
+      pipeline: Option[PipelineName]
+  ): Boolean =
+    val scopeMatches =
+      scope match
+        case BidsScope.Raw         => file.scope == BidsScope.Raw
+        case BidsScope.Derivatives => file.scope == BidsScope.Derivatives
+        case BidsScope.All         => true
+    val pipelineMatches =
+      pipeline.forall(expected => file.pipeline.exists(_.value == expected.value))
+    scopeMatches && pipelineMatches
 
 object BidsManifest:
   private val AuxiliaryNames: Set[String] =

@@ -1,0 +1,1 @@
+{"actor":"codex-bids4s","entity":"bd-01KYNP1A2JYN56QG8X0BQVPRTD","kind":"note","note_kind":"decision","op":"20260729T012650.890566Z-p46293-c0000-r49a0-h5a1aa6","text":"frame4s stays out of layout parsing/query core; revisit it only as an optional typed TSV or BIDSLayout.to_df-style adapter.","ts":"2026-07-29T01:26:50.890566Z","v":1}

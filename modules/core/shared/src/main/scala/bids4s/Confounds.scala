@@ -186,8 +186,8 @@ object ConfoundStrategy:
   private def unsafe(
       name: String,
       pcaVars: Vector[String],
-      rawVars: Vector[String] = Vector.empty,
-      pcaRetention: Option[PcaRetention] = None
+      rawVars: Vector[String],
+      pcaRetention: Option[PcaRetention]
   ): ConfoundStrategy =
     require(name.trim.nonEmpty, "confound strategy name must be non-empty")
     require(pcaVars.nonEmpty, "confound strategy PCA variables must be non-empty")

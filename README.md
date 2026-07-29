@@ -63,7 +63,19 @@ single-filter query is shorter:
 
 ```scala
 val subject01 = BidsQuery.exact(EntityKey.Subject, "01")
+val firstRun = BidsQuery.run(1) // also matches run-01
 ```
+
+Entity presence is direct too:
+
+```scala
+val withRuns = BidsQuery.present(EntityKey.Run)
+val withoutRuns = BidsQuery.absent(EntityKey.Run)
+```
+
+These correspond to PyBIDS `Query.REQUIRED` and `Query.NONE` without using a
+sentinel as an entity value. `EntityFilter.optional` is available when
+composing several filter policies.
 
 Use `BidsQuery.from` when a query needs filename patterns, regex or glob
 matching, missing-entity policy, or other advanced controls.
@@ -148,6 +160,16 @@ Run the full JVM and Scala.js gate:
 ```sh
 sbt compileAll testAll
 ```
+
+The JVM coverage gate requires at least 80% statement and 70% branch coverage:
+
+```sh
+sbt coverageJVM
+```
+
+PyBIDS behavior and matched performance workloads are tracked in
+[docs/pybids-parity.md](docs/pybids-parity.md). Run the local comparison with
+`scripts/pybids-court.sh`.
 
 The validation and effect boundary is described in
 [docs/design/validation-and-effect-boundary.md](docs/design/validation-and-effect-boundary.md).

@@ -72,6 +72,13 @@ final case class BidsProject(
   def runs(scope: BidsScope = BidsScope.All, pipeline: Option[PipelineName] = None): Vector[String] =
     entityValues(EntityKey.Run, scope, pipeline)
 
+  def entityValues(
+      key: EntityKey,
+      scope: BidsScope = BidsScope.All,
+      pipeline: Option[PipelineName] = None
+  ): Vector[String] =
+    manifest.entityValues(key, scope, pipeline)
+
   def sessionsBySubject(
       scope: BidsScope = BidsScope.All,
       pipeline: Option[PipelineName] = None
@@ -368,12 +375,6 @@ final case class BidsProject(
       val preprocKindMatches = globMatches(name.kind, desc)
       (kindMatches && descMatches) || preprocKindMatches
     }
-
-  private def entityValues(key: EntityKey, scope: BidsScope, pipeline: Option[PipelineName]): Vector[String] =
-    query(BidsQuery.unsafe(scope = scope, pipeline = pipeline))
-      .flatMap(_.entities.get(key))
-      .distinct
-      .sorted
 
   private def globMatches(value: String, pattern: String): Boolean =
     value.matches(Matching.globToRegex(pattern))

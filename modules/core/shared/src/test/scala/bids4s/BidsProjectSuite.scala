@@ -55,6 +55,7 @@ class BidsProjectSuite extends munit.FunSuite:
     assertEquals(project.sessions(), Vector("A"))
     assertEquals(project.tasks(), Vector("nback", "rest"))
     assertEquals(project.runs(), Vector("01", "02"))
+    assertEquals(project.entityValues(EntityKey.Subject), project.subjects())
 
   test("participants table preserves dataframe-like participant columns"):
     val table = project.participantsTable.getOrElse(fail("expected participants table"))

@@ -23,12 +23,12 @@ class BidsProjectLoaderFSuite extends munit.FunSuite:
     finally deleteRecursive(root)
 
   private def write(path: Path, text: String): Unit =
-    Files.createDirectories(path.getParent)
-    Files.writeString(path, text, StandardCharsets.UTF_8)
+    val _ = Files.createDirectories(path.getParent)
+    val _ = Files.writeString(path, text, StandardCharsets.UTF_8)
 
   private def touch(path: Path): Unit =
-    Files.createDirectories(path.getParent)
-    Files.write(path, Array.emptyByteArray)
+    val _ = Files.createDirectories(path.getParent)
+    val _ = Files.write(path, Array.emptyByteArray)
 
   private def deleteRecursive(path: Path): Unit =
     if Files.exists(path) then
@@ -202,7 +202,7 @@ class BidsProjectLoaderFSuite extends munit.FunSuite:
     val canceled = new Probe
 
     runtime.useAutoCloseable(IO.pure(success))(_ => IO.unit).unsafeRunSync()
-    intercept[RuntimeException](
+    val _ = intercept[RuntimeException](
       runtime.useAutoCloseable(IO.pure(failure))(_ => IO.raiseError(new RuntimeException("boom"))).unsafeRunSync()
     )
     val cancellation =

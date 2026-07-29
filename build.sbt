@@ -34,10 +34,17 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-feature",
     "-unchecked",
+    "-Werror",
+    "-Wunused:all",
+    "-Wvalue-discard",
+    "-Wnonunit-statement",
     "-Xmax-inlines:64"
   ),
   Test / fork := false,
-  libraryDependencies += "org.scalameta" %%% "munit" % "1.2.1" % Test
+  libraryDependencies ++= Seq(
+    "org.scalameta" %%% "munit" % "1.3.0" % Test,
+    "org.scalameta" %%% "munit-scalacheck" % "1.3.0" % Test
+  )
 )
 
 lazy val jsSettings = Seq(
@@ -56,7 +63,10 @@ lazy val core =
       libraryDependencies += "org.typelevel" %%% "cats-core" % "2.12.0"
     )
     .jvmSettings(
-      libraryDependencies += "org.typelevel" %% "cats-effect" % "3.5.4"
+      libraryDependencies += "org.typelevel" %% "cats-effect" % "3.5.4",
+      coverageFailOnMinimum := true,
+      coverageMinimumStmtTotal := 80.0,
+      coverageMinimumBranchTotal := 70.0
     )
     .jsSettings(jsSettings)
 
@@ -80,10 +90,23 @@ lazy val firstContact =
 lazy val firstContactJVM = firstContact.jvm
 lazy val firstContactJS = firstContact.js
 
+lazy val benchmarks =
+  project
+    .in(file("modules/benchmarks"))
+    .dependsOn(coreJVM)
+    .enablePlugins(JmhPlugin)
+    .disablePlugins(SbtVersionPolicyPlugin)
+    .settings(commonSettings)
+    .settings(
+      name := "bids4s-benchmarks",
+      description := "Non-published JMH and PyBIDS comparison court for bids4s.",
+      publish / skip := true
+    )
+
 lazy val root =
   project
     .in(file("."))
-    .aggregate(coreJVM, coreJS, firstContactJVM, firstContactJS)
+    .aggregate(coreJVM, coreJS, firstContactJVM, firstContactJS, benchmarks)
     .settings(
       name := "bids4s-root",
       publish / skip := true
@@ -91,3 +114,5 @@ lazy val root =
 
 addCommandAlias("compileAll", ";coreJVM/compile;coreJS/compile;firstContactJVM/compile;firstContactJS/compile")
 addCommandAlias("testAll", ";coreJVM/test;coreJS/test;firstContactJVM/test;firstContactJS/test")
+addCommandAlias("benchmarkSmoke", ";benchmarks/compile;benchmarks/Jmh/compile")
+addCommandAlias("coverageJVM", ";coverage;coreJVM/test;coreJVM/coverageReport")
