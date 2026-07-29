@@ -103,10 +103,23 @@ lazy val benchmarks =
       publish / skip := true
     )
 
+lazy val docs =
+  project
+    .in(file("site"))
+    .dependsOn(coreJVM)
+    .enablePlugins(TypelevelSitePlugin)
+    .disablePlugins(SbtVersionPolicyPlugin)
+    .settings(
+      name := "bids4s-docs",
+      description := "Executable guides and reference documentation for bids4s.",
+      publish / skip := true,
+      mdocExtraArguments += "--no-link-hygiene"
+    )
+
 lazy val root =
   project
     .in(file("."))
-    .aggregate(coreJVM, coreJS, firstContactJVM, firstContactJS, benchmarks)
+    .aggregate(coreJVM, coreJS, firstContactJVM, firstContactJS, benchmarks, docs)
     .settings(
       name := "bids4s-root",
       publish / skip := true

@@ -1,5 +1,11 @@
 # Validation and Effect-Boundary Design
 
+**Archive note:** This is the pre-extraction design record. It preserves the
+decisions and verification evidence used to create bids4s, but its ScalaFIM
+project names, commands, and API inventory are not the current standalone
+guide. See [Loading and validation](../loading-and-validation.md) for the
+supported bids4s API.
+
 bids4s has a pure, cross-compiled domain core with JVM filesystem adapters.
 This document records the hardening decisions made before extraction and the
 boundary that the standalone library preserves.

@@ -48,7 +48,7 @@ measurement windows for routine harness checks.
 Use the full 64-subject, 6,281-file fixture for a comparison receipt:
 
 ```sh
-scripts/pybids-court.sh target/pybids-court-2026-07-28 full
+scripts/pybids-court.sh target/pybids-court-full full
 ```
 
 The script refuses to overwrite a non-empty receipt.

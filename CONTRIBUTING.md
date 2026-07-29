@@ -11,5 +11,11 @@ Before submitting a change:
 4. Run `sbt compileAll testAll`.
 5. Run `git diff --check`.
 
+When changing public documentation, also run:
+
+```sh
+sbt coreJVM/doc docs/tlSite
+```
+
 Do not add remote storage, caching, retry, streaming, or a hidden effect runtime
 without a concrete use case and explicit compatibility review.

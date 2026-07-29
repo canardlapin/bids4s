@@ -4,6 +4,9 @@ bids4s is a typed Scala 3 library for parsing, validating, querying, and
 inspecting Brain Imaging Data Structure (BIDS) projects. Its domain APIs run on
 the JVM and Scala.js. Local filesystem discovery is a JVM adapter.
 
+[Read the executable guides](docs/README.md) for installation, querying,
+validation, tables, and confounds.
+
 ## Quick start
 
 Load a local project and ask for its raw functional scans:
@@ -14,10 +17,8 @@ import bids4s.io.*
 
 import java.nio.file.Path
 
-val scans =
-  BidsProjectLoader
-    .loadStrict(Path.of("/data/study"))
-    .map(_.funcScans())
+val loaded = BidsProjectLoader.loadStrict(Path.of("/data/study"))
+val scans = loaded.map(_.funcScans())
 ```
 
 `scans` is an `Either[BidsProjectLoadError, Vector[BidsFile]]`. Loading and
@@ -25,10 +26,14 @@ validation failures remain explicit, while a valid project exposes direct
 methods for common work:
 
 ```scala
-project.subjects(scope = BidsScope.Raw)
-project.funcScans(task = "rest")
-project.anatScans(subid = "01")
-project.eventFiles(subid = "01", task = "rest")
+val selected = loaded.map { project =>
+  (
+    project.subjects(scope = BidsScope.Raw),
+    project.funcScans(task = "rest"),
+    project.anatScans(subid = "01"),
+    project.eventFiles(subid = "01", task = "rest")
+  )
+}
 ```
 
 `BidsScope.Raw` selects source files, `Derivatives` selects processed outputs,
@@ -77,8 +82,10 @@ These correspond to PyBIDS `Query.REQUIRED` and `Query.NONE` without using a
 sentinel as an entity value. `EntityFilter.optional` is available when
 composing several filter policies.
 
-Use `BidsQuery.from` when a query needs filename patterns, regex or glob
-matching, missing-entity policy, or other advanced controls.
+Use `BidsQuery.from` to combine entity filters and advanced matching policies.
+Its `matchMode` controls entity values; its `filename` strings are regular
+expressions. Use `BidsQuery.fromPatterns` with `QueryPattern.Exact`, `Glob`, or
+`Regex` when the filename policy should be explicit.
 
 ## Loading and validation
 
@@ -103,6 +110,10 @@ val duration = table.column("duration")
 val timing = table.select("onset", "duration")
 ```
 
+`column` returns `Either[BidsError, Vector[Option[String]]]`; `select` returns
+`Either[BidsError, BidsTable]`. Both report an `InvalidTable` error when a
+requested column is absent.
+
 For fMRIPrep confounds, select a named set without manually transporting the
 result of `ConfoundSets.named`:
 
@@ -121,6 +132,10 @@ val pca = BidsProjectLoader.readConfoundStrategy(
   task = "rest"
 )
 ```
+
+Both calls return
+`Either[BidsError, Vector[BidsConfoundSelectionFile]]`. Each result records the
+requested and resolved columns, the selected table, and cleaning diagnostics.
 
 ## Main APIs
 
@@ -161,6 +176,12 @@ Run the full JVM and Scala.js gate:
 sbt compileAll testAll
 ```
 
+Compile the API reference and executable guide site:
+
+```sh
+sbt coreJVM/doc docs/tlSite
+```
+
 The JVM coverage gate requires at least 80% statement and 70% branch coverage:
 
 ```sh
@@ -171,8 +192,8 @@ PyBIDS behavior and matched performance workloads are tracked in
 [docs/pybids-parity.md](docs/pybids-parity.md). Run the local comparison with
 `scripts/pybids-court.sh`.
 
-The validation and effect boundary is described in
-[docs/design/validation-and-effect-boundary.md](docs/design/validation-and-effect-boundary.md).
+Loading and validation behavior is described in
+[docs/loading-and-validation.md](docs/loading-and-validation.md).
 The supported compiler and dependency policy is in
 [docs/compatibility.md](docs/compatibility.md).
 

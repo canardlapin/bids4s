@@ -21,6 +21,7 @@ jobs:
           cache: sbt
       - uses: sbt/setup-sbt@1f718a9acba84199353b2835642645f66393cae7
       - run: sbt coreJVM/test firstContactJVM/compile benchmarkSmoke
+      - run: sbt coreJVM/doc docs/tlSite
       - run: sbt coverageJVM
 
   scala-js:

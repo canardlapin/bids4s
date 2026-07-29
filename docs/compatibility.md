@@ -2,17 +2,17 @@
 
 ## Scala and platforms
 
-bids4s publishes one Scala 3 artifact line:
+bids4s is configured to publish one Scala 3 artifact line:
 
 ```text
 io.github.canardlapin:bids4s_3
 io.github.canardlapin:bids4s_sjs1_3
 ```
 
-The initial artifact is compiled with Scala 3.3.8, the oldest compiler used by
-a live downstream project. Source CI also compiles and tests the library with
-Scala 3.4.2 and 3.7.4. The project does not publish separate artifacts for
-Scala 3 minor versions because they share the `_3` suffix.
+The initial artifact will be compiled with Scala 3.3.8, the oldest compiler
+used by a live downstream project. Source CI also compiles and tests the
+library with Scala 3.4.2 and 3.7.4. The project will not publish separate
+artifacts for Scala 3 minor versions because they share the `_3` suffix.
 
 The supported runtime court is:
 
