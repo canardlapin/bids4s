@@ -16,7 +16,8 @@ final case class BidsName(
 
 object BidsName:
   val KnownExtensions: Vector[String] =
-    Vector("nii.gz", "tsv.gz", "lv.h5", "json", "nii", "tsv", "csv", "txt", "h5", "gii", "bval", "bvec")
+    Vector("surf.gii", "shape.gii", "label.gii", "func.gii", "rgba.gii", "coord.gii", "tensor.gii",
+      "nii.gz", "tsv.gz", "lv.h5", "json", "nii", "tsv", "csv", "txt", "h5", "mat", "gii", "bval", "bvec")
 
   def parse(filename: String): Either[BidsError, BidsName] =
     BidsRegistry.Builtin.parse(filename)
