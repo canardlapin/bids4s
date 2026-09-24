@@ -4,6 +4,10 @@ bids4s is a typed Scala 3 library for parsing, validating, querying, and
 inspecting Brain Imaging Data Structure (BIDS) projects. Its domain APIs run on
 the JVM and Scala.js. Local filesystem discovery is a JVM adapter.
 
+> **Maturity:** `0.1-development` / pre-release. The API and validation
+> policies may change while the package is being hardened; no stable support or
+> binary-compatibility promise is implied.
+
 [Read the executable guides](docs/README.md) for installation, querying,
 validation, tables, and confounds.
 

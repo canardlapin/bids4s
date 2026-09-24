@@ -24,6 +24,21 @@ enum EntityKey:
   case Variant
   case Custom(shortKey: String, name: String)
 
+  /** Compare semantic identity without changing the original entity spelling.
+    * Standard index entities ignore leading zeros in ASCII digit strings.
+    * Label values and non-index legacy spellings compare exactly. This is not
+    * validation and does not alter exact/regex query semantics.
+    */
+  def equivalentValue(left: String, right: String): Boolean =
+    val index = this match
+      case Run | Echo => true
+      case Custom(key, _) => Set("flip", "inv", "split", "chunk").contains(key)
+      case _ => false
+    def digits(value: String): Boolean = value.nonEmpty && value.forall(c => c >= '0' && c <= '9')
+    if index && digits(left) && digits(right) then
+      left.dropWhile(_ == '0') == right.dropWhile(_ == '0')
+    else left == right
+
   def short: String =
     this match
       case Subject        => "sub"
