@@ -151,14 +151,14 @@ class BidsProjectLoaderSuite extends munit.FunSuite:
       assert(BidsProjectLoader.readTable(project, BidsPath("/tmp/outside.tsv")).isLeft)
     }
 
-  test("metadata inheritance merges root, datatype, and file sidecars"):
+  test("metadata inheritance resolves root, subject, and file sidecars"):
     withBidsFixture { root =>
       writeCoreFixture(root)
       write(
         root.resolve("task-rest_bold.json"),
         """{"TaskName":"Rest","RepetitionTime":1.5,"Nested":{"A":1}}"""
       )
-      write(root.resolve("sub-01/func/task-rest_bold.json"), """{"SliceTiming":[0,0.5],"Nested":{"B":2}}""")
+      write(root.resolve("sub-01/sub-01_task-rest_bold.json"), """{"SliceTiming":[0,0.5],"Nested":{"B":2}}""")
       write(root.resolve("sub-01/func/sub-01_task-rest_run-01_bold.json"), """{"RepetitionTime":2.0}""")
 
       val project = value(BidsProjectLoader.load(root))
@@ -170,7 +170,7 @@ class BidsProjectLoaderSuite extends munit.FunSuite:
       assertEquals(meta.fields("RepetitionTime").asNumber, Some(2.0))
       assert(meta.fields.contains("SliceTiming"))
       val nested = meta.fields("Nested").asObject.getOrElse(fail("Nested metadata should be an object"))
-      assertEquals(nested("A").asNumber, Some(1.0))
+      assert(!nested.contains("A"))
       assertEquals(nested("B").asNumber, Some(2.0))
       assertEquals(records.map(_.path.value), Vector("sub-01/func/sub-01_task-rest_run-01_bold.nii.gz"))
       assertEquals(records.head.number("RepetitionTime"), Some(2.0))

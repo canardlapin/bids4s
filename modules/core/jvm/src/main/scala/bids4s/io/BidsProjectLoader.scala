@@ -130,12 +130,15 @@ private[io] object BidsCheckedContent:
 
   def resolvedMetadata(project: BidsProject): Vector[BidsIssue] =
     project.manifest.files
-      .filter(file => file.extension != "json" && file.parsed.exists(_.kind == "bold"))
+      .filter(file => file.extension != "json" && file.parsed.nonEmpty)
       .sortBy(_.path.value)
       .flatMap { file =>
-        project.metadata(file.path).toOption.toVector.flatMap { metadata =>
-          BidsMetadataValidation.resolvedSidecar(file.path, metadata)
-        }
+        project.resolveMetadata(file.path) match
+          case Left(error) =>
+            Vector(BidsIssue.error(BidsIssueCode.InvalidSidecar, Some(file.path), None, error.message))
+          case Right(resolved) if file.parsed.exists(_.kind == "bold") =>
+            BidsMetadataValidation.resolvedSidecar(file.path, resolved.metadata)
+          case Right(_) => Vector.empty
       }
 
   private def issueAt(path: BidsPath, issue: BidsIssue): BidsIssue =

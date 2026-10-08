@@ -276,3 +276,22 @@ class BidsProjectLoaderFSuite extends munit.FunSuite:
       assert(error.message.contains(firstRelative), clues(error.message))
       assert(!error.message.contains(secondRelative), clues(error.message))
     }
+
+  test("both checked loaders report ambiguous inheritance and strict loaders reject it"):
+    withBidsFixture { root =>
+      writeCoreFixture(root)
+      write(root.resolve("bold.json"), """{"RepetitionTime":1.0}""")
+
+      val synchronous = BidsProjectLoader.loadChecked(root).fold(error => fail(error.message), identity)
+      val effectful = loader.loadChecked(root).unsafeRunSync().fold(error => fail(error.message), identity)
+      assertEquals(effectful, synchronous)
+      val target = BidsPath("sub-02/func/sub-02_task-rest_bold.nii.gz")
+      assert(synchronous.errors.exists(issue =>
+        issue.path.contains(target) && issue.code == BidsIssueCode.InvalidSidecar &&
+          issue.message.contains("multiple JSON sidecars")
+      ))
+      assert(BidsProjectLoader.load(root).isRight)
+      assert(loader.load(root).unsafeRunSync().isRight)
+      assert(BidsProjectLoader.loadStrict(root).isLeft)
+      assert(loader.loadStrict(root).unsafeRunSync().isLeft)
+    }

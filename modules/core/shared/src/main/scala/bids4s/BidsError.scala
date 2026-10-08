@@ -12,6 +12,8 @@ enum BidsError:
   case UnknownDatasetLink(name: String, available: Vector[String])
   case InvalidTable(detail: String)
   case InvalidJson(detail: String)
+  case AmbiguousMetadata(target: BidsPath, candidates: Vector[BidsPath])
+  case MissingMetadata(sidecar: BidsPath)
   case MissingParticipants(path: String)
   case Io(path: String, detail: String)
   case UnknownConfoundSet(name: String)
@@ -42,6 +44,10 @@ enum BidsError:
         s"invalid BIDS table: $detail"
       case InvalidJson(detail) =>
         s"invalid JSON: $detail"
+      case AmbiguousMetadata(target, candidates) =>
+        s"multiple JSON sidecars apply at one directory level to '${target.value}': ${candidates.map(_.value).mkString(", ")}"
+      case MissingMetadata(sidecar) =>
+        s"applicable JSON sidecar '${sidecar.value}' has no decoded metadata"
       case MissingParticipants(path) =>
         s"participants.tsv is missing at '$path'"
       case Io(path, detail) =>

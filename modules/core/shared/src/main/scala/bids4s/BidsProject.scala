@@ -235,8 +235,14 @@ final case class BidsProject(
       )
     ).filter(isConfoundFile)
 
+  private lazy val metadataResolver = BidsMetadataResolver(manifest, sidecars, derivatives)
+
+  /** Resolve inherited JSON metadata together with document and field origins. */
+  def resolveMetadata(path: BidsPath): Either[BidsError, BidsMetadataResolution] =
+    metadataResolver.resolve(path)
+
   def metadata(path: BidsPath, inherit: Boolean = true): Either[BidsError, JsonValue.Obj] =
-    if inherit then inheritedMetadata(path) else directMetadata(path)
+    if inherit then resolveMetadata(path).map(_.metadata) else directMetadata(path)
 
   def metadataRecords(files: Vector[BidsFile], inherit: Boolean = true): Either[BidsError, Vector[BidsMetadataRecord]] =
     BidsEither.traverse(files)(file => metadata(file.path, inherit).map(meta => BidsMetadataRecord(file, meta)))
@@ -317,50 +323,12 @@ final case class BidsProject(
       case None        => Right(JsonValue.EmptyObject)
       case Some(jsonp) => Right(sidecars.getOrElse(jsonp, JsonValue.EmptyObject))
 
-  private def inheritedMetadata(path: BidsPath): Either[BidsError, JsonValue.Obj] =
-    BidsName.parse(path.fileName).orElse(BidsName.parseGeneric(path.fileName)).map { targetName =>
-      val targetDir = path.parent.map(_.value).getOrElse("")
-      val ancestors = ancestorDirectories(targetDir)
-
-      val candidates =
-        manifest.files
-          .filter(file => file.extension == "json")
-          .flatMap { file =>
-            val candidateName = BidsName.parseGeneric(file.fileName).toOption
-            candidateName
-              .filter(candidateApplies(_, targetName))
-              .filter(_ => ancestors.contains(file.directory))
-              .flatMap(_ => sidecars.get(file.path).map(meta => (file, meta)))
-          }
-          .sortBy { case (file, _) =>
-            val depth = ancestors.indexOf(file.directory)
-            val specificity = file.parsed.map(_.entities.keys.length).getOrElse(0)
-            (depth, specificity, file.path.value)
-          }
-
-      candidates.foldLeft(JsonValue.EmptyObject) { case (acc, (_, meta)) =>
-        JsonValue.merge(acc, meta)
-      }
-    }
-
   private def directSidecarPath(path: BidsPath): Option[BidsPath] =
     if path.fileName.toLowerCase.endsWith(".json") then Some(path)
     else
       BidsName.KnownExtensions
         .find(ext => path.value.endsWith("." + ext))
         .map(ext => BidsPath(path.value.dropRight(ext.length + 1) + ".json"))
-
-  private def ancestorDirectories(dir: String): Vector[String] =
-    if dir.isEmpty then Vector("")
-    else
-      val parts = dir.split('/').toVector.filter(_.nonEmpty)
-      Vector("") ++ parts.indices.map(i => parts.take(i + 1).mkString("/")).toVector
-
-  private def candidateApplies(candidate: BidsName, target: BidsName): Boolean =
-    candidate.kind == target.kind &&
-      candidate.entities.keys.forall { key =>
-        target.entities.get(key).contains(candidate.entities(key))
-      }
 
   private def isConfoundFile(file: BidsFile): Boolean =
     file.parsed.exists { name =>

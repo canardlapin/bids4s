@@ -14,3 +14,9 @@ object FirstContact:
 
   val firstRun =
     BidsQuery.run(1)
+
+  def explainMetadata(project: BidsProject, path: BidsPath): Either[BidsError, Vector[BidsMetadataValue]] =
+    project.resolveMetadata(path).map(_.history("RepetitionTime"))
+
+  def fieldmaps(project: BidsProject): BidsFieldmapReport =
+    BidsFieldmapResolver.resolve(project.manifest, BidsMetadataResolver(project.manifest, project.sidecars, project.derivatives))

@@ -20,10 +20,11 @@ file selection should still agree.
 | Raw, all-derivative, and named-pipeline scope | Supported | Use `BidsScope` plus an optional `PipelineName` |
 | Sorted file results | Supported | Sort by project-relative path |
 | Unique subject, session, task, and run IDs | Supported | Return sorted values through direct project methods |
-| Inherited JSON metadata | Partial | Match inheritance precedence within the correct dataset root |
+| Inherited JSON metadata | Partial; boundary and provenance regressions covered | Dataset-root isolation, top-level overrides, explicit same-directory ambiguity, and field origins are tested; full oracle coverage remains pending |
 | Required, optional, present, and absent entities | Supported | Use typed presence filters rather than string sentinels |
 | Padded run normalization such as `1` versus `01` | Supported | Preserve the readable exact-query API and canonicalize internally |
-| Nearest-file, fieldmap, bval, and bvec lookup | Not yet matched | Add typed result records where ambiguity matters |
+| Explicit fieldmap declarations | Partial | Typed B0 identifier groups and current-dataset/legacy IntendedFor links, origins, boundaries and findings; no implicit fieldmap or geometry inference |
+| Nearest-file, bval, and bvec lookup | Not yet matched | Add typed result records where ambiguity matters |
 | Persistent layout index | Not implemented | Measure repeated-query needs before adding storage or caching |
 | Layout dataframe export | Not implemented | Keep the core independent; consider an optional frame4s adapter |
 | Variables and statistical-model APIs | Out of current scope | Treat as separate modules if demand and evidence justify them |
